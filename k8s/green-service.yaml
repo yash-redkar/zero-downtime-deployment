@@ -1,0 +1,57 @@
+# =============================================================================
+# StreamShield Simulator — Green Service (Release Candidate v2)
+# =============================================================================
+#
+# This Service exposes the Green (v2) environment via NodePort 30082.
+# It allows the team to access and validate the new release candidate
+# directly, without affecting users who are still on the Blue (v1) Service.
+#
+# PORT SEPARATION IS KEY:
+#   Blue  Service → NodePort 30081 → v1 (stable, production)
+#   Green Service → NodePort 30082 → v2 (new release, being tested)
+#
+# This isolation means you can:
+#   - Open v1 and v2 side by side in separate browser tabs
+#   - Test chaos mode on Green without impacting Blue users
+#   - Validate all v2 routes (/watch, /trending, /chaos/on) in Kubernetes
+#   - Confirm v2 health probes pass before any traffic migration
+#
+# Traffic flow:
+#   User → NodePort 30082 → Service (port 80) → Pod (containerPort 5000)
+#
+# Apply with:
+#   kubectl apply -f k8s/green-service.yaml
+# =============================================================================
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: streamshield-green-service
+  namespace: streamshield           # Must match namespace.yaml
+  labels:
+    app: streamshield
+    version: v2
+    environment: green
+
+spec:
+  # NodePort: accessible via <minikube-ip>:30082 from outside the cluster
+  type: NodePort
+
+  # ── Selector ───────────────────────────────────────────────────────────────
+  # CRITICAL: This selector uses environment=green to ensure this Service
+  # ONLY routes traffic to Green (v2) pods — never to Blue (v1) pods.
+  #
+  # The blue-service uses environment=blue, so the two services are
+  # completely isolated from each other by label selectors.
+  selector:
+    app: streamshield
+    version: v2
+    environment: green              # Strictly targets only Green pods
+
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80                      # Internal cluster port
+      targetPort: 5000              # Flask app port inside the pod
+      nodePort: 30082               # External port on Minikube node for v2 (Green)
+                                    # Access at: http://<minikube-ip>:30082

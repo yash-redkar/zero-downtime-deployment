@@ -1,0 +1,22 @@
+# =============================================================================
+# StreamShield Simulator — Kubernetes Namespace
+# =============================================================================
+# A Namespace provides a mechanism for isolating groups of resources
+# within a single cluster. All StreamShield resources (Deployments,
+# Services, Pods) live inside this namespace so they are cleanly
+# separated from other workloads running in the same cluster.
+#
+# Apply with:
+#   kubectl apply -f k8s/namespace.yaml
+#   kubectl get namespaces
+# =============================================================================
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: streamshield
+  labels:
+    # Project identification labels
+    project: streamshield-simulator
+    phase: phase-2
+    managed-by: kubectl

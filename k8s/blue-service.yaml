@@ -1,0 +1,53 @@
+# =============================================================================
+# StreamShield Simulator — Blue Service (Stable v1)
+# =============================================================================
+#
+# A Kubernetes Service exposes a group of pods as a stable network endpoint.
+# Pods are ephemeral — they can be created, destroyed, and rescheduled at any
+# time. Without a Service, clients would have to track individual pod IPs.
+#
+# This Service acts as a load balancer in front of all Blue (v1) pods.
+# It selects pods using the labels: app=streamshield, version=v1, environment=blue.
+#
+# SERVICE TYPE: NodePort
+# ──────────────────────
+# NodePort exposes the Service on a static port on every node in the cluster.
+# In Minikube, you access it via:
+#   minikube service streamshield-blue-service -n streamshield
+#
+# Traffic flow:
+#   User → NodePort 30081 → Service (port 80) → Pod (containerPort 5000)
+#
+# Apply with:
+#   kubectl apply -f k8s/blue-service.yaml
+# =============================================================================
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: streamshield-blue-service
+  namespace: streamshield           # Must match namespace.yaml
+  labels:
+    app: streamshield
+    version: v1
+    environment: blue
+
+spec:
+  # NodePort: accessible via <minikube-ip>:30081 from outside the cluster
+  type: NodePort
+
+  # ── Selector ───────────────────────────────────────────────────────────────
+  # This Service routes traffic ONLY to pods that have ALL three labels.
+  # This ensures Blue traffic stays on Blue (v1) pods — never Green (v2).
+  selector:
+    app: streamshield
+    version: v1
+    environment: blue               # Strictly targets only Blue pods
+
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80                      # Port the Service listens on internally (cluster-wide)
+      targetPort: 5000              # Port the Flask app listens on inside the pod
+      nodePort: 30081               # External port on the Minikube node for v1 (Blue)
+                                    # Access at: http://<minikube-ip>:30081
