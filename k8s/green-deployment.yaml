@@ -1,67 +1,34 @@
-# =============================================================================
-# StreamShield Simulator — Green Deployment (Release Candidate v2)
-# =============================================================================
-#
-# GREEN ENVIRONMENT — RELEASE CANDIDATE
-# ──────────────────────────────────────
-# The Green environment runs streamshield-v2 and represents the NEW release
-# being tested before it is promoted to production. In a Blue-Green strategy:
-#
-#   BLUE  = current stable production (users are here)
-#   GREEN = new release candidate (being validated here)
-#
-# The Green environment allows the team to:
-#   1. Test v2 in a real Kubernetes environment (not just local)
-#   2. Run health checks and verify readiness probes pass
-#   3. Validate chaos mode simulation without impacting v1 users
-#   4. Prepare for traffic switching (Phase 3 — Ingress canary)
-#
-# At this stage, Green runs independently alongside Blue.
-# Users are NOT yet sent to Green. Traffic switching comes in Phase 3.
-#
-# Apply with:
-#   kubectl apply -f k8s/green-deployment.yaml
-# =============================================================================
-
 apiVersion: apps/v1
 kind: Deployment
+
 metadata:
   name: streamshield-green
-  namespace: streamshield           # Must match namespace.yaml
+  namespace: streamshield
   labels:
     app: streamshield
     version: v2
     environment: green
-    release-role: candidate         # Green = release candidate, not yet production
 
 spec:
-  # ── Replica Count ────────────────────────────────────────────────────────
-  # 2 replicas ensure the green environment itself is resilient during
-  # testing. If one pod crashes during validation, testing continues.
   replicas: 2
 
-  # ── Selector ─────────────────────────────────────────────────────────────
-  # Kubernetes uses this to identify which pods belong to this Deployment.
-  # The labels here must exactly match template.metadata.labels below.
   selector:
     matchLabels:
       app: streamshield
       version: v2
       environment: green
 
-  # ── Pod Template ─────────────────────────────────────────────────────────
-  # Blueprint for every Green pod created by this Deployment.
   template:
     metadata:
       labels:
         app: streamshield
         version: v2
         environment: green
-        release-role: candidate     # Marks these pods as "not yet production"
 
     spec:
       containers:
         - name: streamshield-v2
+<<<<<<< HEAD
           image: streamshield-v2:latest
 
           # ── imagePullPolicy: Never ────────────────────────────────────────
@@ -74,54 +41,31 @@ spec:
           # Without this step, the pod will fail with ImagePullBackOff error
           # because Kubernetes cannot find the image in any remote registry.
           imagePullPolicy: IfNotPresent
+=======
+          image: zero-downtime-deployment-v2:latest
+          imagePullPolicy: Never
+>>>>>>> abd53adcb0b257690d81b1dce83239b9bfecaa48
 
-          # Flask app listens on port 5000 inside the container
           ports:
             - containerPort: 5000
               name: http
 
-          # ── Readiness Probe ───────────────────────────────────────────────
-          # Before sending any traffic to a Green pod, Kubernetes checks
-          # GET /health → must return HTTP 200.
-          #
-          # This is especially important for v2 because:
-          #   - v2 has a chaos mode that can make /health return degraded
-          #   - We want to ensure v2 is genuinely ready before any user sees it
-          #   - This probe acts as a safety gate for the release candidate
-          #
-          # Note: The /health endpoint in v2 returns:
-          #   { "status": "healthy", "version": "v2", "chaos_mode": false }
           readinessProbe:
             httpGet:
               path: /health
               port: 5000
-            initialDelaySeconds: 5    # Wait 5s after startup before first check
-            periodSeconds: 10         # Check every 10 seconds
-            failureThreshold: 3       # Mark unready after 3 consecutive failures
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
 
-          # ── Liveness Probe ────────────────────────────────────────────────
-          # If v2 becomes stuck (e.g., deadlock during chaos simulation),
-          # Kubernetes will automatically restart the container.
-          #
-          # This prevents zombie pods that appear "running" but are frozen.
-          # For a release candidate, auto-restart is a critical safety net.
           livenessProbe:
             httpGet:
               path: /health
               port: 5000
-            initialDelaySeconds: 15   # Give app 15s to fully initialize
-            periodSeconds: 20         # Check every 20 seconds
-            failureThreshold: 3       # Restart after 3 consecutive liveness failures
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            failureThreshold: 3
 
-          # ── Resource Limits ───────────────────────────────────────────────
-          # Same resource profile as Blue. This ensures a fair comparison —
-          # both environments run with identical resource constraints.
-          #
-          # requests = guaranteed minimum (used by scheduler)
-          # limits   = hard maximum (container is throttled if exceeded)
-          #
-          # If v2 has a memory leak or CPU spike during chaos testing,
-          # the limits will contain the damage to this pod only.
           resources:
             requests:
               cpu: "100m"

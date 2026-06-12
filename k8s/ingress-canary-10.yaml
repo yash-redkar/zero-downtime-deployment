@@ -1,0 +1,64 @@
+# =============================================================================
+# StreamShield — Canary Ingress (10% Public Traffic to v2)
+# =============================================================================
+#
+# PURPOSE: This is the CANARY ingress for the smart rollout strategy.
+# It intercepts 10% of all public traffic hitting streamshield.local
+# and routes it to streamshield-green-service (v2) instead.
+#
+# HOW NGINX CANARY TRAFFIC SPLIT WORKS:
+# ──────────────────────────────────────
+# NGINX ingress controller intercepts all incoming requests.
+# With canary-weight: "10", it probabilistically routes:
+#   - ~90% of requests → main ingress → Blue (v1) [via ingress-main.yaml]
+#   - ~10% of requests → canary ingress → Green (v2) [this file]
+#
+# Users have NO control over which version they land on.
+# The split happens transparently at the load balancer level.
+# This is exactly how real companies like Netflix run canary deployments.
+#
+# IMPORTANT: This ingress ONLY works when ingress-main.yaml is also applied.
+# The canary ingress is an extension of the main ingress — not standalone.
+#
+# Requires:
+#   kubectl apply -f k8s/ingress-main.yaml     (apply main FIRST)
+#   kubectl apply -f k8s/ingress-canary-10.yaml
+#
+# Verify:
+#   kubectl get ingress -n streamshield
+# =============================================================================
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: streamshield-canary-ingress
+  namespace: streamshield
+  labels:
+    app: streamshield
+    phase: phase-3
+    role: canary-10-percent    # Routes 10% of public traffic to v2
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+
+    # ── Canary Annotations ──────────────────────────────────────────────────
+    # Mark this ingress as a canary — NGINX will use it for traffic splitting
+    nginx.ingress.kubernetes.io/canary: "true"
+
+    # 10% of all traffic to streamshield.local is routed to this canary.
+    # Value range: 0 (0%) to 100 (100%)
+    # At 10, approximately 1 in 10 requests goes to Green (v2).
+    nginx.ingress.kubernetes.io/canary-weight: "10"
+
+spec:
+  rules:
+    - host: streamshield.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                # Canary traffic goes to v2 Green environment
+                name: streamshield-green-service
+                port:
+                  number: 80

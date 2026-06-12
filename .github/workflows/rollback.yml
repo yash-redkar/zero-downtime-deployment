@@ -1,0 +1,93 @@
+name: StreamShield Rollback Workflow
+
+on:
+  workflow_dispatch:
+    inputs:
+      rollback_reason:
+        description: "Reason for rollback"
+        required: true
+        default: "High error rate detected in green release"
+
+      rollback_target:
+        description: "Rollback target"
+        required: true
+        default: "blue-v1-stable"
+
+      severity:
+        description: "Incident severity"
+        required: true
+        default: "SEV-2"
+
+permissions:
+  contents: read
+
+jobs:
+  rollback-report:
+    name: Generate Rollback Report
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Generate Rollback Artifact
+        run: |
+          mkdir -p rollback-artifact
+
+          echo "# StreamShield Rollback Report" > rollback-artifact/ROLLBACK_REPORT.md
+          echo "" >> rollback-artifact/ROLLBACK_REPORT.md
+
+          echo "## Incident Metadata" >> rollback-artifact/ROLLBACK_REPORT.md
+          echo "- Triggered By: ${{ github.actor }}" >> rollback-artifact/ROLLBACK_REPORT.md
+          echo "- Rollback Reason: ${{ github.event.inputs.rollback_reason }}" >> rollback-artifact/ROLLBACK_REPORT.md
+          echo "- Rollback Target: ${{ github.event.inputs.rollback_target }}" >> rollback-artifact/ROLLBACK_REPORT.md
+          echo "- Severity: ${{ github.event.inputs.severity }}" >> rollback-artifact/ROLLBACK_REPORT.md
+          echo "- Commit SHA: ${{ github.sha }}" >> rollback-artifact/ROLLBACK_REPORT.md
+          echo "- Workflow Run Number: ${{ github.run_number }}" >> rollback-artifact/ROLLBACK_REPORT.md
+          echo "" >> rollback-artifact/ROLLBACK_REPORT.md
+
+          echo "## Rollback Strategy" >> rollback-artifact/ROLLBACK_REPORT.md
+          echo "StreamShield rollback restores production traffic back to the stable Blue environment." >> rollback-artifact/ROLLBACK_REPORT.md
+          echo "" >> rollback-artifact/ROLLBACK_REPORT.md
+
+          echo "## Kubernetes Rollback Commands" >> rollback-artifact/ROLLBACK_REPORT.md
+          echo '```bash' >> rollback-artifact/ROLLBACK_REPORT.md
+          echo "kubectl delete -f k8s/ingress-canary-10.yaml --ignore-not-found=true" >> rollback-artifact/ROLLBACK_REPORT.md
+          echo "kubectl delete -f k8s/ingress-internal-team.yaml --ignore-not-found=true" >> rollback-artifact/ROLLBACK_REPORT.md
+          echo "kubectl apply -f k8s/ingress-main.yaml" >> rollback-artifact/ROLLBACK_REPORT.md
+          echo "kubectl rollout status deployment/streamshield-blue -n streamshield" >> rollback-artifact/ROLLBACK_REPORT.md
+          echo "kubectl get pods -n streamshield" >> rollback-artifact/ROLLBACK_REPORT.md
+          echo "kubectl get svc -n streamshield" >> rollback-artifact/ROLLBACK_REPORT.md
+          echo "kubectl get ingress -n streamshield" >> rollback-artifact/ROLLBACK_REPORT.md
+          echo '```' >> rollback-artifact/ROLLBACK_REPORT.md
+          echo "" >> rollback-artifact/ROLLBACK_REPORT.md
+
+          echo "## Expected Result" >> rollback-artifact/ROLLBACK_REPORT.md
+          echo "- Canary traffic to Green is removed." >> rollback-artifact/ROLLBACK_REPORT.md
+          echo "- Internal routing to Green is disabled." >> rollback-artifact/ROLLBACK_REPORT.md
+          echo "- Main production route points back to Blue." >> rollback-artifact/ROLLBACK_REPORT.md
+          echo "- Users are served by stable v1." >> rollback-artifact/ROLLBACK_REPORT.md
+          echo "- Viewer impact is minimized." >> rollback-artifact/ROLLBACK_REPORT.md
+          echo "" >> rollback-artifact/ROLLBACK_REPORT.md
+
+          echo "## Production Note" >> rollback-artifact/ROLLBACK_REPORT.md
+          echo "In a real cloud Kubernetes setup, this workflow would use kubeconfig secrets to execute rollback commands directly against the cluster." >> rollback-artifact/ROLLBACK_REPORT.md
+          echo "For this capstone, GitHub Actions generates rollback evidence and the local Minikube rollback is demonstrated using scripts or kubectl commands." >> rollback-artifact/ROLLBACK_REPORT.md
+
+      - name: Upload Rollback Report Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: streamshield-rollback-report-${{ github.run_number }}
+          path: rollback-artifact/
+
+      - name: Rollback Summary
+        run: |
+          echo "## StreamShield Rollback Workflow Executed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Rollback report artifact generated successfully." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Reason:** ${{ github.event.inputs.rollback_reason }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Target:** ${{ github.event.inputs.rollback_target }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Severity:** ${{ github.event.inputs.severity }}" >> $GITHUB_STEP_SUMMARY

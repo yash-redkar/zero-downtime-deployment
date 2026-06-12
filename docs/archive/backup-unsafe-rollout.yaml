@@ -1,0 +1,63 @@
+# =============================================================================
+# StreamShield — Unsafe Rollout Ingress (100% Traffic Direct to v2)
+# =============================================================================
+#
+# PURPOSE: This ingress simulates an UNSAFE deployment where the company
+# replaces the main production route with v2 directly, without any canary
+# testing, QA validation, or rollback strategy.
+#
+# WHAT THIS REPRESENTS:
+# ─────────────────────
+# A developer or ops team directly pushes v2 to production.
+# All 100% of users hitting streamshield.local are routed to v2 (Green).
+# If v2 has bugs (chaos mode is ON), every single user sees failures.
+# There is no way to quickly revert without manually re-applying manifests.
+#
+# HOW IT IS DIFFERENT FROM THE CANARY INGRESS:
+# ─────────────────────────────────────────────
+# - No "canary: true" annotations — this is NOT a canary ingress
+# - This replaces the main ingress as the sole production route
+# - 100% traffic, no header requirement, no weight control
+# - This is what happens when DevOps best practices are IGNORED
+#
+# USAGE (in Unsafe Rollout Mode ONLY):
+#   1. Delete or replace ingress-main.yaml with this file
+#   2. Enable chaos mode: curl http://streamshield.local/chaos/on
+#   3. Run load test to see failures impact ALL users
+#
+# Apply with:
+#   kubectl apply -f k8s/unsafe-rollout.yaml
+#
+# The scripts/unsafe-rollout.ps1 script handles the full workflow.
+#
+# ⚠️  WARNING: Do NOT apply this alongside ingress-main.yaml.
+#     Use scripts/reset-rollout.ps1 to safely clean up afterwards.
+# =============================================================================
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: streamshield-unsafe-ingress
+  namespace: streamshield
+  labels:
+    app: streamshield
+    phase: phase-3
+    role: unsafe-direct-rollout   # This represents a reckless 100% v2 rollout
+  annotations:
+    # Standard NGINX ingress — no canary annotations
+    # This behaves as the primary production ingress, routing ALL traffic to v2
+    kubernetes.io/ingress.class: "nginx"
+
+spec:
+  rules:
+    - host: streamshield.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                # ALL production traffic goes directly to v2 — no safety net
+                name: streamshield-green-service
+                port:
+                  number: 80

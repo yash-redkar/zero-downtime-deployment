@@ -1,0 +1,18 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: streamshield-monitor
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: streamshield
+  namespaceSelector:
+    matchNames:
+      - streamshield
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 10s
