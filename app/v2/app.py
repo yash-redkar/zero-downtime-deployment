@@ -755,6 +755,70 @@ def homepage():
 
       <!-- Mode Info Panel (populated by JS) -->
       <div id="mode-info-panel"></div>
+      <!-- ───────────────────────────────────────────── -->
+      <!-- RELEASE CONTROL CENTER (NEW ADDITION) -->
+      <!-- ───────────────────────────────────────────── -->
+
+      <div class="section-title" style="margin-top:48px;">
+        <span class="dot"></span>
+        Release Control Center
+      </div>
+
+      <div class="section-sub">
+        Real-time deployment visibility dashboard
+      </div>
+
+      <div style="
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+      gap:20px;
+      margin-bottom:40px;
+      ">
+
+        <div class="glass-card" style="padding:24px;text-align:center;">
+            <h3 style="color:var(--green);">🏥 Deployment Health</h3>
+            <h1>98%</h1>
+            <p style="color:var(--muted);">Healthy Release Candidate</p>
+        </div>
+
+        <div class="glass-card" style="padding:24px;text-align:center;">
+            <h3 style="color:var(--cyan);">🎯 Canary Traffic</h3>
+            <h1>10%</h1>
+            <p style="color:var(--muted);">Traffic routed to v2</p>
+        </div>
+
+        <div class="glass-card" style="padding:24px;text-align:center;">
+            <h3 style="color:var(--purple);">👨‍💻 Internal QA</h3>
+            <h1>100%</h1>
+            <p style="color:var(--muted);">QA Team Validation</p>
+        </div>
+
+        <div class="glass-card" style="padding:24px;text-align:center;">
+            <h3 style="color:var(--gold);">🔄 Auto Rollback</h3>
+            <h1>ARMED</h1>
+            <p style="color:var(--muted);">Trigger at >5% Error Rate</p>
+        </div>
+
+      </div>
+
+      <div class="section-title">
+        <span class="dot"></span>
+        Release Timeline
+      </div>
+
+      <div class="glass-card" style="padding:24px;margin-bottom:40px;">
+        <p>✅ Internal QA Rollout Complete</p>
+        <br>
+        <p>✅ Canary Deployment Active (10%)</p>
+        <br>
+        <p>⏳ Production Rollout Pending (50%)</p>
+        <br>
+        <p>🚀 Full Production Deployment (100%)</p>
+      </div>
+
+      <!-- ───────────────────────────────────────────── -->
+      <!-- END RELEASE CONTROL CENTER -->
+      <!-- ───────────────────────────────────────────── -->
 
       <!-- ── Chaos Mode Control Panel ── -->
       <div class="section-title" style="margin-top:48px;"><span class="dot"></span> Bad Release Simulator (Chaos Mode)</div>
