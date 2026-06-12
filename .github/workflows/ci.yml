@@ -1,0 +1,75 @@
+name: StreamShield CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+        cache: "pip"
+
+    - name: Install dependencies for app/v1
+      run: |
+        cd app/v1
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Syntax check for app/v1
+      run: |
+        cd app/v1
+        python -m py_compile app.py
+
+    - name: Install dependencies for app/v2
+      run: |
+        cd app/v2
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Syntax check for app/v2
+      run: |
+        cd app/v2
+        python -m py_compile app.py
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build Docker image for v1
+      uses: docker/build-push-action@v5
+      with:
+        context: ./app/v1
+        push: false
+        tags: streamshield-v1:latest
+        load: true
+
+    - name: Build Docker image for v2
+      uses: docker/build-push-action@v5
+      with:
+        context: ./app/v2
+        push: false
+        tags: streamshield-v2:latest
+        load: true
+
+    - name: Verify Images Built Successfully
+      run: |
+        docker image ls | grep streamshield
+
+    - name: Build Summary
+      run: |
+        echo "✅ Syntax checks passed" >> $GITHUB_STEP_SUMMARY
+        echo "✅ Docker images built successfully" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "> **Note for Capstone:**" >> $GITHUB_STEP_SUMMARY
+        echo "> In a production environment, this workflow would push these images to Docker Hub (or ECR/GCR) and then trigger a deployment to a cloud Kubernetes cluster." >> $GITHUB_STEP_SUMMARY
+        echo "> Since Minikube runs locally, we only build the images here to validate the CI process." >> $GITHUB_STEP_SUMMARY
