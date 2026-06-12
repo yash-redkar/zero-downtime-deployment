@@ -1,536 +1,840 @@
 # StreamShield Simulator
-## Zero-Downtime Release Simulator for Streaming Platforms
 
-> **Phase 1 — Application & Docker Foundation** | **Phase 2 — Kubernetes Blue-Green Deployment** | **Phase 3 — Rollout Simulator Modes** | **Phase 4 — Health Score + Auto Rollback**
+## Zero-Downtime Deployment System for Streaming Platforms
 
----
+StreamShield Simulator is a DevOps/SRE capstone project that demonstrates how a streaming platform can safely release a new application version without downtime.
 
-## 🎯 Problem Statement
+The project simulates two release strategies:
 
-Streaming platforms like Netflix, Hotstar, and Prime Video cannot risk broken releases during live cricket finals, movie premieres, or high-traffic events. A single bad deployment can cause:
+1. **Unsafe Rollout Mode** — a bad deployment where the new version is released directly to all users.
+2. **Smart Rollout Mode** — an industry-style deployment strategy using blue-green deployment, canary traffic, internal QA rollout, health-score monitoring, and automated rollback.
 
-- **Buffering** and playback failures for millions of users
-- **HTTP 500 errors** under peak load
-- **Revenue loss** and brand damage
-- **No way to rollback** if done incorrectly
-
-This project simulates exactly that challenge — and shows how **DevOps release strategies** solve it.
+This project was built to demonstrate practical DevOps concepts including Git, GitHub, GitHub Issues, GitHub Actions, Docker, Kubernetes, YAML, artifacts, versioning, rollback strategy, and release automation.
 
 ---
 
-## 💡 Core Idea: Two Worlds, One Platform
+## Project Objective
 
-| | Unsafe Rollout | Smart Rollout |
-|---|---|---|
-| **v2 traffic** | 100% users immediately | 10% canary users |
-| **Internal QA** | Skipped | Enabled |
-| **Canary rollout** | Disabled | Enabled |
-| **Health monitoring** | None | Active |
-| **Rollback** | Not available | Automatic |
-| **Risk** | 🔴 Critical | 🟢 Low |
+Streaming platforms frequently release new features such as:
 
----
+* new video player experience
+* recommendation engine updates
+* live event pages
+* trending content sections
+* UI/UX improvements
+* performance optimizations
 
-## 🔭 Phase 1 Scope
+If a faulty release is pushed directly to all users, it can cause:
 
-This phase builds the complete application and Docker foundation:
+* video playback failures
+* buffering
+* high latency
+* 500 errors
+* user complaints
+* loss of viewer trust
+* revenue impact during live events
 
-- ✅ **v1 Stable App** — Blue environment, 100% production traffic, always healthy
-- ✅ **v2 Smart Release Simulator** — Green environment, mode switcher, new features
-- ✅ **Dockerized Apps** — Both versions containerized with Docker
-- ✅ **Chaos Simulation Endpoints** — Simulate buggy v2 releases on demand
-- ✅ **Prometheus-compatible Metrics** — All endpoints export metrics for Phase 2
-
----
-
-## 🛠️ Tools Used
-
-| Tool | Purpose |
-|---|---|
-| **Python Flask** | Backend web framework for both v1 and v2 |
-| **Docker** | Containerize both apps for consistent deployment |
-| **prometheus_client** | Expose Prometheus metrics from Flask |
-| **Minikube** | Local Kubernetes cluster for Phase 2 deployment |
-| **kubectl** | Kubernetes CLI for managing deployments and services |
-| **Git / GitHub** | Version control and source code management |
-| **VS Code / Antigravity** | Development environment |
+The objective of StreamShield is to simulate how modern DevOps teams reduce this risk using controlled rollout strategies and automated recovery.
 
 ---
 
-## 📁 Folder Structure
+## Business Problem
 
+In a streaming business, downtime is not only a technical issue. It directly affects user experience, brand reputation, watch time, subscription trust, and revenue.
+
+For example, if a new video player update fails during a live sports event, thousands of users may experience buffering or playback errors. StreamShield demonstrates how such risk can be reduced by releasing the new version gradually, monitoring its health, and rolling back automatically if the release becomes unhealthy.
+
+---
+
+## Solution Overview
+
+StreamShield solves the release risk problem by using:
+
+* **Blue-Green Deployment**
+* **Canary Rollout**
+* **Internal QA Rollout**
+* **Health Score Based Monitoring**
+* **Automated Rollback**
+* **GitHub Actions CI/CD**
+* **Docker Containerization**
+* **Kubernetes Deployment**
+* **Release Artifacts and Versioning**
+
+---
+
+## Core Features
+
+### 1. Blue-Green Deployment
+
+The project runs two environments:
+
+| Environment | Version | Purpose                   |
+| ----------- | ------- | ------------------------- |
+| Blue        | v1      | Stable production version |
+| Green       | v2      | New release candidate     |
+
+The stable version continues serving users while the new version is tested separately.
+
+---
+
+### 2. Unsafe Rollout Mode
+
+Unsafe Rollout Mode simulates a bad deployment strategy.
+
+In this mode:
+
+* 100% traffic is routed to v2
+* internal QA is skipped
+* canary rollout is disabled
+* health score is not used
+* rollback is not available
+
+This mode shows what happens when a risky release is pushed directly to all users.
+
+---
+
+### 3. Smart Rollout Mode
+
+Smart Rollout Mode simulates a safer DevOps release strategy.
+
+In this mode:
+
+* v1 remains the stable production version
+* v2 is first exposed to internal QA users
+* only 10% traffic is routed to v2 using canary routing
+* release health is monitored
+* rollback can restore stable v1
+
+This reduces the blast radius of a bad release.
+
+---
+
+### 4. Internal QA Rollout
+
+Internal users can access v2 before normal users using header-based routing.
+
+Example:
+
+```bash
+curl -H "X-Internal-Team: true" http://streamshield.local
 ```
+
+This allows developers, QA engineers, and product teams to test the new release before public users are affected.
+
+---
+
+### 5. Canary Traffic Routing
+
+Canary routing sends only a small percentage of public traffic to the new release.
+
+Example:
+
+```text
+90% traffic -> v1 stable version
+10% traffic -> v2 new release
+```
+
+This helps detect issues early while protecting most users.
+
+---
+
+### 6. Health Score Engine
+
+The release health score is calculated using multiple signals:
+
+* error rate
+* playback failure rate
+* response latency
+* pod readiness
+* restart count
+
+Health score classification:
+
+| Score    | Status            |
+| -------- | ----------------- |
+| 90-100   | Excellent         |
+| 75-89    | Healthy           |
+| 60-74    | Risky             |
+| Below 60 | Rollback Required |
+
+Rollback condition:
+
+```text
+Health Score < 70
+OR Error Rate > 5%
+OR Playback Failure Rate > 8%
+OR Latency > 800ms
+```
+
+---
+
+### 7. Automated Rollback
+
+The project includes rollback automation using GitHub Actions.
+
+Rollback workflow:
+
+```text
+.github/workflows/rollback.yml
+```
+
+The rollback workflow represents a production-style recovery process. If v2 becomes unhealthy, the rollback workflow restores the stable Blue environment and removes risky Green/canary traffic.
+
+---
+
+### 8. GitHub Actions CI/CD
+
+The project includes GitHub Actions workflows to demonstrate CI/CD automation.
+
+The CI/CD workflow validates:
+
+* Python application syntax
+* Docker image builds
+* Kubernetes YAML files
+* release artifact generation
+* version metadata
+
+The rollback workflow supports:
+
+* manual rollback trigger
+* stable environment restoration
+* rollback visibility in GitHub Actions
+
+---
+
+## Architecture
+
+```text
+                         +----------------------+
+                         |      GitHub Repo     |
+                         | Issues / PRs / Tags |
+                         +----------+-----------+
+                                    |
+                                    v
+                         +----------------------+
+                         |   GitHub Actions CI  |
+                         | Build / Validate     |
+                         | Artifact / Version   |
+                         +----------+-----------+
+                                    |
+                                    v
++----------------+        +----------------------+        +----------------+
+| Streaming User | -----> |   NGINX Ingress      | -----> | Blue v1 App    |
++----------------+        | Traffic Management   |        | Stable Version |
+                          +----------+-----------+        +----------------+
+                                     |
+                                     | 10% Canary / Internal QA
+                                     v
+                              +----------------+
+                              | Green v2 App   |
+                              | New Release    |
+                              +----------------+
+                                     |
+                                     v
+                              +----------------+
+                              | Health Score   |
+                              | Error/Latency  |
+                              | Pod Health     |
+                              +----------------+
+                                     |
+                                     v
+                              +----------------+
+                              | Auto Rollback  |
+                              | Restore v1     |
+                              +----------------+
+```
+
+---
+
+## Tech Stack
+
+| Category           | Tools                            |
+| ------------------ | -------------------------------- |
+| Application        | Python Flask                     |
+| Containerization   | Docker                           |
+| Orchestration      | Kubernetes, Minikube             |
+| Traffic Routing    | NGINX Ingress                    |
+| CI/CD              | GitHub Actions                   |
+| Version Control    | Git, GitHub                      |
+| Monitoring Concept | Prometheus Metrics, Health Score |
+| Automation         | PowerShell Scripts               |
+| Load Simulation    | k6 / curl fallback               |
+| Documentation      | Markdown, Runbook                |
+
+---
+
+## Repository Structure
+
+```text
 StreamShield/
+│
 ├── app/
 │   ├── v1/
-│   │   ├── app.py              # v1 Stable Blue streaming platform
-│   │   ├── requirements.txt    # Flask + prometheus_client
-│   │   └── Dockerfile          # Docker build config for v1
+│   │   ├── app.py
+│   │   ├── requirements.txt
+│   │   └── Dockerfile
+│   │
 │   └── v2/
-│       ├── app.py              # v2 Smart Release Simulator (Green)
-│       ├── requirements.txt    # Flask + prometheus_client
-│       └── Dockerfile          # Docker build config for v2
-├── k8s/                        # Phase 2 — Kubernetes manifests
-│   ├── namespace.yaml          # streamshield namespace
-│   ├── blue-deployment.yaml    # v1 Blue Deployment (2 replicas)
-│   ├── blue-service.yaml       # NodePort Service → port 30081
-│   ├── green-deployment.yaml   # v2 Green Deployment (2 replicas)
-│   ├── green-service.yaml      # NodePort Service → port 30082
-│   └── phase2-commands.md      # Step-by-step Minikube commands
-├── README.md                   # This file
-└── .gitignore                  # Python, Docker, VS Code ignores
+│       ├── app.py
+│       ├── requirements.txt
+│       └── Dockerfile
+│
+├── k8s/
+│   ├── namespace.yaml
+│   ├── blue-deployment.yaml
+│   ├── blue-service.yaml
+│   ├── green-deployment.yaml
+│   ├── green-service.yaml
+│   ├── ingress-main.yaml
+│   ├── ingress-canary-10.yaml
+│   ├── ingress-internal-team.yaml
+│   └── unsafe-rollout.yaml
+│
+├── load-tests/
+│   └── viewer-load.js
+│
+├── scripts/
+│   ├── unsafe-rollout.ps1
+│   ├── smart-rollout.ps1
+│   ├── reset-rollout.ps1
+│   ├── health-score.ps1
+│   ├── rollback.ps1
+│   ├── auto-rollback.ps1
+│   ├── verify-system.ps1
+│   └── run-final-demo.ps1
+│
+├── monitoring/
+│   ├── prometheus-install.md
+│   ├── grafana-dashboard-notes.md
+│   └── health-score-rules.md
+│
+├── docs/
+│   ├── architecture.md
+│   ├── business-case.md
+│   ├── runbook.md
+│   └── demo-script.md
+│
+├── .github/
+│   └── workflows/
+│       ├── ci.yml
+│       └── rollback.yml
+│
+├── README.md
+└── .gitignore
 ```
 
 ---
 
-## 🚀 How to Run Locally
+## Application Versions
 
-### Run v1 (Stable Blue Environment)
+### v1 — Stable Blue Environment
 
-```bash
-cd app/v1
-pip install -r requirements.txt
-python app.py
+v1 represents the stable production version.
+
+Main features:
+
+* stable streaming homepage
+* movie catalog
+* stable watch page
+* health endpoint
+* metrics endpoint
+
+Endpoints:
+
+```text
+/
+ /health
+ /movies
+ /watch
+ /release-mode
+ /metrics
 ```
-
-Open: [http://localhost:5000](http://localhost:5000)
-
-### Run v2 (Smart Release Simulator — Green)
-
-```bash
-cd app/v2
-pip install -r requirements.txt
-python app.py
-```
-
-Open: [http://localhost:5000](http://localhost:5000)
-
-> **Note:** Run v1 and v2 on different ports if running simultaneously (use Docker).
 
 ---
 
-## 🐳 Docker Build & Run
+### v2 — Green Release Environment
 
-### Build Docker Images
+v2 represents the new release candidate.
+
+Main features:
+
+* smart video player
+* trending section
+* simulated recommendations
+* release mode simulator
+* chaos mode for bad release simulation
+
+Endpoints:
+
+```text
+/
+ /health
+ /movies
+ /watch
+ /trending
+ /chaos/on
+ /chaos/off
+ /simulator/status
+ /release-mode/unsafe
+ /release-mode/smart
+ /metrics
+```
+
+---
+
+## Prerequisites
+
+Install the following tools:
+
+* Git
+* Docker Desktop
+* Minikube
+* kubectl
+* PowerShell
+* k6 optional
+* VS Code
+
+Verify installation:
 
 ```bash
-# Build v1
+docker --version
+minikube version
+kubectl version --client
+git --version
+```
+
+---
+
+## Running the Project Locally with Docker
+
+Go to the project root:
+
+```bash
+cd /d/Devops/StreamShield
+```
+
+Build Docker images:
+
+```bash
 docker build -t streamshield-v1:latest ./app/v1
-
-# Build v2
 docker build -t streamshield-v2:latest ./app/v2
 ```
 
-### Run Docker Containers
+Run v1:
 
 ```bash
-# Run v1 on port 5001
 docker run -p 5001:5000 streamshield-v1:latest
+```
 
-# Run v2 on port 5002
+Open:
+
+```text
+http://localhost:5001
+```
+
+Run v2:
+
+```bash
 docker run -p 5002:5000 streamshield-v2:latest
 ```
 
-Access:
-- **v1 (Blue)** → [http://localhost:5001](http://localhost:5001)
-- **v2 (Green)** → [http://localhost:5002](http://localhost:5002)
+Open:
+
+```text
+http://localhost:5002
+```
 
 ---
 
-## 📡 Endpoint Reference
+## Kubernetes Deployment
 
-### v1 Endpoints (Stable Blue)
+Start Minikube:
 
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/` | Homepage — streaming UI + DevOps status |
-| `GET` | `/health` | Health check (JSON) |
-| `GET` | `/movies` | Movie list (JSON) |
-| `GET` | `/watch` | Stable video player (always works) |
-| `GET` | `/release-mode` | Release mode info (JSON) |
-| `GET` | `/metrics` | Prometheus metrics |
-
-### v2 Endpoints (Smart Release Simulator — Green)
-
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/` | Homepage — mode switcher + simulator UI |
-| `GET` | `/health` | Health check with chaos_mode (JSON) |
-| `GET` | `/movies` | Movie list (JSON) |
-| `GET` | `/watch` | Smart player (chaos-aware) |
-| `GET` | `/trending` | Trending shows page |
-| `GET` | `/chaos/on` | 💀 Enable chaos mode (bad release) |
-| `GET` | `/chaos/off` | ✅ Disable chaos mode (restore) |
-| `GET` | `/simulator/status` | Full simulator state (JSON) |
-| `GET` | `/release-mode/unsafe` | Unsafe rollout info (JSON) |
-| `GET` | `/release-mode/smart` | Smart rollout info (JSON) |
-| `GET` | `/metrics` | Prometheus metrics |
-
----
-
-## 💥 Chaos Mode Explained
-
-Chaos mode simulates what happens during a **bad v2 release**:
-
-### Enable Chaos Mode
-```
-GET http://localhost:5002/chaos/on
-```
-```json
-{
-  "chaos_mode": true,
-  "message": "Bad release simulation enabled",
-  "effect": "GET /watch will randomly return 500 errors and high latency"
-}
-```
-
-**When chaos is ON, `/watch` will:**
-- 40% of requests → Return **HTTP 500** (server crash simulation)
-- 30% of requests → Add **2–5 seconds of latency** (high buffering simulation)
-- Increment **playback_failures_total** Prometheus counter
-- Show DevOps insight explaining why rollback is needed
-
-### Disable Chaos Mode
-```
-GET http://localhost:5002/chaos/off
-```
-```json
-{
-  "chaos_mode": false,
-  "message": "Bad release simulation disabled",
-  "effect": "GET /watch is now operating normally"
-}
-```
-
-**This simulates a successful rollback to v1.**
-
----
-
-## 📊 Prometheus Metrics
-
-Both v1 and v2 expose metrics at `/metrics`:
-
-| Metric | Type | Description |
-|---|---|---|
-| `streamshield_http_requests_total` | Counter | Total HTTP requests (labels: version, endpoint, status) |
-| `streamshield_request_latency_seconds` | Histogram | Request duration (labels: version, endpoint) |
-| `streamshield_playback_failures_total` | Counter | Playback failures (labels: version) |
-| `streamshield_chaos_mode` | Gauge | 1.0 = chaos ON, 0.0 = chaos OFF (v2 only) |
-
----
-
-## ☸️ Phase 2: Kubernetes Blue-Green Deployment
-
-This phase creates the **Kubernetes foundation** for zero-downtime deployment.
-v1 runs as the stable Blue environment, while v2 runs as the Green release candidate.
-In later phases, traffic will be shifted safely between these two environments.
-
-### What Blue Means
-
-The **Blue environment** (`streamshield-blue`) runs `streamshield-v1:latest`.
-It represents the **current stable production version** — battle-tested, always healthy,
-serving 100% of real users. Blue must never go down.
-
-### What Green Means
-
-The **Green environment** (`streamshield-green`) runs `streamshield-v2:latest`.
-It represents the **release candidate** — a new version being validated in a real
-Kubernetes environment before it is promoted to production. At this stage,
-no real user traffic is sent to Green; it exists purely for testing and validation.
-
-### Why Two Environments?
-
-| Reason | Benefit |
-|---|---|
-| **Zero downtime** | Old version stays up while new version is validated |
-| **Risk isolation** | A bug in Green cannot crash Blue |
-| **Easy rollback** | If Green fails, Blue continues serving users |
-| **Safe validation** | Probes and health checks confirm readiness before traffic shifts |
-| **Side-by-side testing** | QA team can access both versions simultaneously |
-
-### Phase 2 Tools
-
-| Tool | Purpose |
-|---|---|
-| **Minikube** | Runs a local Kubernetes cluster inside Docker |
-| **kubectl** | CLI to apply YAML manifests and manage resources |
-| **Docker Desktop** | Provides the Docker daemon Minikube uses |
-| **YAML manifests** | Declarative definitions for Deployments and Services |
-
-### Quick Start (PowerShell)
-
-```powershell
-# Start Minikube
+```bash
 minikube start --driver=docker
+```
 
-# Load images into Minikube's internal registry
+Load Docker images into Minikube:
+
+```bash
 minikube image load streamshield-v1:latest
 minikube image load streamshield-v2:latest
-
-# Apply all manifests
-kubectl apply -f k8s\namespace.yaml
-kubectl apply -f k8s\blue-deployment.yaml
-kubectl apply -f k8s\blue-service.yaml
-kubectl apply -f k8s\green-deployment.yaml
-kubectl apply -f k8s\green-service.yaml
-
-# Open both environments in browser
-minikube service streamshield-blue-service  -n streamshield   # v1 on port 30081
-minikube service streamshield-green-service -n streamshield   # v2 on port 30082
 ```
 
-> 📖 Full step-by-step guide with troubleshooting: [`k8s/phase2-commands.md`](k8s/phase2-commands.md)
+Apply Kubernetes manifests:
 
-### Expected Output After Deployment
-
+```bash
+kubectl apply -f k8s/namespace.yaml
+kubectl apply -f k8s/blue-deployment.yaml
+kubectl apply -f k8s/blue-service.yaml
+kubectl apply -f k8s/green-deployment.yaml
+kubectl apply -f k8s/green-service.yaml
 ```
+
+Verify:
+
+```bash
 kubectl get all -n streamshield
+```
 
-NAME                                      READY   STATUS    RESTARTS   AGE
-pod/streamshield-blue-xxx-xxx             1/1     Running   0          3m
-pod/streamshield-blue-xxx-xxx             1/1     Running   0          3m
-pod/streamshield-green-xxx-xxx            1/1     Running   0          1m
-pod/streamshield-green-xxx-xxx            1/1     Running   0          1m
+Expected result:
 
-NAME                                  TYPE       PORT(S)
-service/streamshield-blue-service     NodePort   80:30081/TCP
-service/streamshield-green-service    NodePort   80:30082/TCP
+```text
+Blue pods running
+Green pods running
+Blue service created
+Green service created
+```
 
-NAME                                 READY   UP-TO-DATE   AVAILABLE
-deployment.apps/streamshield-blue    2/2     2            2
-deployment.apps/streamshield-green   2/2     2            2
+Open v1:
+
+```bash
+minikube service streamshield-blue-service -n streamshield
+```
+
+Open v2:
+
+```bash
+minikube service streamshield-green-service -n streamshield
 ```
 
 ---
 
-## 🚦 Phase 3: Rollout Simulator Modes
+## Ingress Setup
 
-This phase adds two live rollout simulation modes using NGINX Ingress traffic control and k6 load testing, demonstrating the real-world difference between a bad and a safe release strategy.
+Enable NGINX Ingress:
 
-### Unsafe Rollout Mode
-
-**What it simulates:** A developer pushes v2 directly to 100% of production users with no validation.
-
-- All traffic to `streamshield.local` is routed to v2 (Green)
-- Chaos mode is enabled — v2 randomly returns 500 errors and high latency
-- 50 virtual viewers hit the platform — most see failures
-- No rollback is available — everyone is stuck on the broken version
-- This shows why direct deployments are dangerous
-
-### Smart Rollout Mode
-
-**What it simulates:** A responsible team uses a staged release strategy.
-
-| Stage | Who | Route |
-|---|---|---|
-| Stage 1 | All normal users | v1 (Blue) — stable, untouched |
-| Stage 2 | QA team only | v2 (Green) via `X-Internal-Team: true` header |
-| Stage 3 | 10% public canary | v2 (Green) via NGINX canary-weight |
-| Stage 4 | Health + auto-rollback | Phase 4 (placeholder shown) |
-
-- 90% of users stay safely on v1 even if v2 is broken
-- Only the canary segment (~5 out of 50 virtual viewers) can be affected
-- QA team can validate v2 privately before public canary goes live
-
-### Why Load Testing?
-
-Real production deployments don't get tested by manually refreshing a browser. k6 simulates **50 concurrent streaming viewers** hitting the platform simultaneously — the same kind of traffic that occurs during a live cricket final or movie premiere. This makes the failure impact of Unsafe Rollout visually obvious in the k6 output.
-
-### Tools Used in Phase 3
-
-| Tool | Purpose |
-|---|---|
-| **NGINX Ingress** | Traffic routing, canary splitting, header-based routing |
-| **k6** | Open-source load testing tool — simulates virtual users |
-| **Minikube Ingress Addon** | Enables NGINX ingress controller in Minikube |
-| **PowerShell Scripts** | Automates the full rollout simulation workflow |
-
----
-
-### ⚙️ One-Time Setup — Windows Hosts File
-
-To access `streamshield.local` from your browser, you must add one line to your Windows hosts file:
-
-**Step 1 — Get your Minikube IP:**
-```powershell
-minikube ip
-# Example output: 192.168.49.2
-```
-
-**Step 2 — Edit the hosts file:**
-1. Open **Notepad as Administrator** (right-click → Run as administrator)
-2. Open file: `C:\Windows\System32\drivers\etc\hosts`
-3. Add this line at the bottom (replace with your actual Minikube IP):
-```
-192.168.49.2 streamshield.local
-```
-4. Save the file.
-
-**Step 3 — Verify it works:**
-```powershell
-curl http://streamshield.local
-```
-
-> ⚠️ You must redo this if your Minikube IP changes (after `minikube delete` + `minikube start`).
-
----
-
-### 🚀 Enable NGINX Ingress Addon
-
-```powershell
+```bash
 minikube addons enable ingress
+```
 
-# Wait for the controller to be ready (~60 seconds first time)
+Check ingress controller:
+
+```bash
 kubectl get pods -n ingress-nginx
 ```
 
----
+Get Minikube IP:
 
-### ▶️ Run the Simulations
-
-**Option A — Unsafe Rollout (bad release demo):**
-```powershell
-cd D:\Devops\StreamShield
-.\scripts\unsafe-rollout.ps1
+```bash
+minikube ip
 ```
 
-**Option B — Smart Rollout (safe release demo):**
-```powershell
-cd D:\Devops\StreamShield
-.\scripts\smart-rollout.ps1
+Add the IP to Windows hosts file:
+
+```text
+C:\Windows\System32\drivers\etc\hosts
 ```
 
-**Reset to clean state between runs:**
-```powershell
-.\scripts\reset-rollout.ps1
+Example:
+
+```text
+192.168.49.2 streamshield.local
 ```
 
----
+Apply main ingress:
 
-### 📊 Demo Comparison — What You'll See
+```bash
+kubectl apply -f k8s/ingress-main.yaml
+```
 
-| | Unsafe Rollout | Smart Rollout |
-|---|---|---|
-| **Ingress** | `unsafe-rollout.yaml` | `ingress-main.yaml` + canary + header |
-| **Traffic to v2** | 100% | ~10% public + QA team only |
-| **Chaos mode** | ON — everyone suffers | ON — only canary users affected |
-| **k6 failure rate** | ~40-70% requests fail | ~4-7% requests fail |
-| **Users protected** | None | ~90% stay safely on v1 |
-| **Rollback** | Not available | Phase 4 (placeholder shown) |
+Test:
 
-### 🔎 Test Commands (Manual)
-
-```powershell
-# Test as normal user (should get v1 in smart mode)
+```bash
 curl http://streamshield.local
-
-# Test as QA team member (always gets v2)
-curl -H "X-Internal-Team: true" http://streamshield.local
-
-# Enable chaos on v2 via QA header
-curl -H "X-Internal-Team: true" http://streamshield.local/chaos/on
-
-# Check which version a request hits
-curl http://streamshield.local/health
-
-# Run k6 load test directly
-k6 run load-tests/viewer-load.js
-
-# Run against direct URL (skip ingress)
-k6 run -e BASE_URL=http://localhost:5002 load-tests/viewer-load.js
 ```
 
 ---
 
-## 🏥 Phase 4: Health Score + Auto Rollback
+## Rollout Modes
 
-Phase 4 adds the final pieces of a professional DevOps release pipeline: a multi-signal health score engine, automated rollback, CI pipeline, and comprehensive documentation.
+### Unsafe Rollout Mode
 
-### The Health Score Engine
+Unsafe rollout sends all traffic to v2.
 
-Relying on just "Error Rate" is dangerous for a streaming platform. A deployment might have a 2% error rate (looks healthy), but a 1.2-second average latency causing severe buffering and user abandonment. 
+Run:
 
-The **StreamShield Health Score (0-100)** combines 5 metrics into a single decision:
-
-| Metric | Penalty Trigger | Penalty Points | Why? |
-|---|---|---|---|
-| Error Rate | > 5% | −30 | Industry standard SLO |
-| Playback Failure | > 8% | −25 | Streaming-specific (buffering/black screen) |
-| Avg Latency | > 800ms | −20 | >800ms causes player buffering |
-| Pod Readiness | Not all ready | −15 | Risk of capacity overload |
-| Restart Count | > 0 | −10 | Risk of crash loop |
-
-**Decision Bands:**
-- 90–100: ✅ Excellent
-- 75–89: 🟡 Healthy
-- 60–74: 🟠 Risky
-- Below 60: 🔴 Rollback Required (or any single metric over threshold)
-
-### Auto Rollback Engine
-
-The `auto-rollback.ps1` script runs the health score probe. If it detects a bad release, it automatically:
-1. Removes the 10% canary routing.
-2. Removes the internal QA routing.
-3. Restores the main ingress to point 100% of traffic back to v1 (Blue).
-4. Disables chaos mode.
-This takes < 30 seconds and requires **zero human intervention**.
-
-### 🚀 Phase 4 Commands
-
-```powershell
-# Run the Health Score Engine (Probe + Calculate + Report)
-.\scripts\health-score.ps1
-
-# Run the Auto Rollback Engine (Probe + Auto-Revert if bad)
-.\scripts\auto-rollback.ps1
-
-# Run a Manual Rollback
-.\scripts\rollback.ps1
-
-# Guide through the full presentation demo
-.\scripts\demo-compare.ps1
-
-# Verify all system components before a demo
-.\scripts\verify-system.ps1
-
-# The definitive one-command final presentation execution
-.\scripts\run-final-demo.ps1
+```bash
+powershell -ExecutionPolicy Bypass -File ./scripts/unsafe-rollout.ps1
 ```
 
-### 📚 Phase 4 Documentation
+This mode demonstrates:
 
-Check out the newly added `docs/` and `monitoring/` directories for detailed guides:
-- [PROJECT_AUDIT.md](PROJECT_AUDIT.md) — Complete audit status of the simulator components.
-- [QUICK_START_DEMO.md](QUICK_START_DEMO.md) — Quick 5-minute setup and demo execution steps.
-- [architecture.md](docs/architecture.md) — System design and data flow.
-- [business-case.md](docs/business-case.md) — Why this matters financially.
-- [runbook.md](docs/runbook.md) — Incident response guide.
-- [demo-script.md](docs/demo-script.md) — Word-for-word presentation script.
-- [health-score-rules.md](monitoring/health-score-rules.md) — Deep dive into the math.
-- [prometheus-install.md](monitoring/prometheus-install.md) — Minikube Helm installation.
-
-### 🤖 CI Pipeline
-
-Added a GitHub Actions workflow (`.github/workflows/ci.yml`) that automatically tests and builds the v1 and v2 Docker images on every push to `main`.
+* 100% traffic to v2
+* no internal QA
+* no canary
+* no rollback
+* high user impact during bad release
 
 ---
 
-## 🏁 Final Project Summary
+### Smart Rollout Mode
 
-**StreamShield Simulator** demonstrates the evolution of a release pipeline:
+Smart rollout uses stable v1, internal QA, and canary traffic.
 
-1. **Phase 1**: Built the core Flask applications, Dockerized them, and added a Chaos Mode to simulate bad releases.
-2. **Phase 2**: Created the Kubernetes Blue-Green foundation using Deployments and Services on Minikube.
-3. **Phase 3**: Added NGINX Ingress for traffic shaping (10% Canary, Header-based QA routing) and k6 for load testing.
-4. **Phase 4**: Automated the decision-making process with a Health Score Engine and Auto Rollback, creating a self-healing deployment pipeline.
+Run:
+
+```bash
+powershell -ExecutionPolicy Bypass -File ./scripts/smart-rollout.ps1
+```
+
+This mode demonstrates:
+
+* stable v1 remains primary
+* internal QA can test v2
+* 10% canary traffic goes to v2
+* majority users remain protected
 
 ---
 
-## 👤 Author
+### Reset Rollout
 
-**DevOps Capstone Project — Complete (Phases 1-4)**
-*StreamShield Simulator: Zero-Downtime Release Simulator for Streaming Platforms*
+Run:
+
+```bash
+powershell -ExecutionPolicy Bypass -File ./scripts/reset-rollout.ps1
+```
+
+This restores traffic back to stable v1.
 
 ---
 
-> 🛡️ *"Safe releases for high-traffic streaming platforms"*
+## Health Score and Rollback
+
+Run health score:
+
+```bash
+powershell -ExecutionPolicy Bypass -File ./scripts/health-score.ps1
+```
+
+Run auto rollback:
+
+```bash
+powershell -ExecutionPolicy Bypass -File ./scripts/auto-rollback.ps1
+```
+
+Run GitHub Actions rollback workflow:
+
+```text
+GitHub Repo -> Actions -> Rollback Workflow -> Run workflow
+```
+
+---
+
+## Final Demo Command
+
+Run the complete guided demo:
+
+```bash
+powershell -ExecutionPolicy Bypass -File ./scripts/run-final-demo.ps1
+```
+
+The demo shows:
+
+1. system verification
+2. unsafe rollout
+3. bad release behavior
+4. health score check
+5. reset
+6. smart rollout
+7. auto rollback
+8. final comparison
+
+---
+
+## GitHub Workflow
+
+This project uses GitHub Issues to track DevOps phases:
+
+* application development
+* Docker containerization
+* Kubernetes deployment
+* canary rollout
+* release simulator
+* dashboard
+* health score
+* rollback workflow
+* runbook
+
+The project also uses:
+
+* phase-wise commits
+* GitHub Actions
+* build artifacts
+* version tags
+* rollback workflow
+
+---
+
+## CI/CD Pipeline
+
+The GitHub Actions CI pipeline performs:
+
+* source checkout
+* Python dependency installation
+* Python syntax validation
+* Docker image build validation
+* Kubernetes YAML validation
+* release artifact creation
+* build metadata generation
+
+Workflow file:
+
+```text
+.github/workflows/ci.yml
+```
+
+Rollback workflow file:
+
+```text
+.github/workflows/rollback.yml
+```
+
+---
+
+## Versioning
+
+Recommended version tags:
+
+```bash
+git tag -a v0.2.0 -m "v0.2.0: Blue-green Kubernetes foundation completed"
+git push origin v0.2.0
+```
+
+Final release:
+
+```bash
+git tag -a v1.0.0 -m "v1.0.0: Final StreamShield zero-downtime release simulator"
+git push origin v1.0.0
+```
+
+---
+
+## Useful Commands
+
+Check Kubernetes resources:
+
+```bash
+kubectl get all -n streamshield
+```
+
+Check ingress:
+
+```bash
+kubectl get ingress -n streamshield
+```
+
+Check pods:
+
+```bash
+kubectl get pods -n streamshield
+```
+
+View blue logs:
+
+```bash
+kubectl logs deployment/streamshield-blue -n streamshield
+```
+
+View green logs:
+
+```bash
+kubectl logs deployment/streamshield-green -n streamshield
+```
+
+Delete environment:
+
+```bash
+kubectl delete namespace streamshield
+```
+
+---
+
+## Project Phases
+
+| Phase   | Description                                         | Status      |
+| ------- | --------------------------------------------------- | ----------- |
+| Phase 1 | Build v1/v2 simulator apps and Docker images        | Completed   |
+| Phase 2 | Deploy blue-green environments on Kubernetes        | Completed   |
+| Phase 3 | Add unsafe/smart rollout modes and ingress routing  | In Progress |
+| Phase 4 | Add health score, rollback, monitoring, and runbook | In Progress |
+
+---
+
+## Business Value
+
+StreamShield provides business value by helping companies release faster while reducing production risk.
+
+Benefits:
+
+* reduces downtime
+* protects viewer experience
+* limits blast radius of bad releases
+* improves deployment confidence
+* enables faster recovery
+* supports business continuity
+* reduces manual firefighting
+
+Although demonstrated for a streaming platform, the same approach can be extended to:
+
+* fintech platforms
+* e-commerce platforms
+* healthcare systems
+* ed-tech platforms
+* SaaS products
+* live event platforms
+
+---
+
+## Known Limitations
+
+This is a local capstone simulation.
+
+Current limitations:
+
+* Minikube is used instead of a cloud Kubernetes cluster
+* GitHub Actions does not directly deploy to local Minikube
+* Prometheus/Grafana are optional visual monitoring components
+* health score is simulated using local scripts and request checks
+* production secrets and cloud registry are not configured
+
+---
+
+## Future Improvements
+
+Future scope:
+
+* deploy to cloud Kubernetes
+* push Docker images to Docker Hub or GHCR
+* add Argo Rollouts
+* integrate Istio traffic management
+* connect Prometheus Alertmanager to rollback workflow
+* add Slack or Teams alerts
+* add real-time Grafana dashboard
+* add automated performance test reports
+* add production-grade secrets management
+
+---
+
+## Team Roles
+
+| Role                                    | Responsibility                                |
+| --------------------------------------- | --------------------------------------------- |
+| Application & Containerization Engineer | Flask apps and Docker images                  |
+| Kubernetes Release Engineer             | Blue-green deployment and ingress routing     |
+| CI/CD Release Engineer                  | GitHub Actions, artifacts, issues, versioning |
+| SRE Automation Engineer                 | Health score, rollback, runbook, monitoring   |
+
+---
+
+## Final Project Summary
+
+StreamShield Simulator demonstrates the complete DevOps lifecycle:
+
+```text
+Plan -> Code -> Build -> Containerize -> Deploy -> Route Traffic -> Monitor -> Rollback -> Document
+```
+
+It shows how modern DevOps teams protect users and businesses during software releases by combining Kubernetes, Docker, GitHub Actions, canary routing, health scoring, and automated rollback.
+
+The project is not only about deploying containers. It is about protecting business continuity during software releases.
