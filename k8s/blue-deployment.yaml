@@ -57,7 +57,6 @@ spec:
       containers:
         - name: streamshield-v1
           image: streamshield-v1:latest
-
           # ── imagePullPolicy: Never ────────────────────────────────────────
           # IMPORTANT: When using Minikube, Docker images must be loaded
           # into Minikube's internal registry using:
@@ -69,7 +68,7 @@ spec:
           #
           # Without this, Kubernetes would try to pull from the internet
           # and fail with ErrImagePull or ImagePullBackOff.
-          imagePullPolicy: Never
+          imagePullPolicy: IfNotPresent
 
           # Port the Flask app listens on inside the container
           ports:

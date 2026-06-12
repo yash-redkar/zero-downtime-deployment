@@ -73,7 +73,7 @@ spec:
           #
           # Without this step, the pod will fail with ImagePullBackOff error
           # because Kubernetes cannot find the image in any remote registry.
-          imagePullPolicy: Never
+          imagePullPolicy: IfNotPresent
 
           # Flask app listens on port 5000 inside the container
           ports:
