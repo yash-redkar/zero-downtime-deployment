@@ -80,39 +80,6 @@ spec:
             - containerPort: 5000
               name: http
 
-          # ── Readiness Probe ───────────────────────────────────────────────
-          # Before sending any traffic to a Green pod, Kubernetes checks
-          # GET /health → must return HTTP 200.
-          #
-          # This is especially important for v2 because:
-          #   - v2 has a chaos mode that can make /health return degraded
-          #   - We want to ensure v2 is genuinely ready before any user sees it
-          #   - This probe acts as a safety gate for the release candidate
-          #
-          # Note: The /health endpoint in v2 returns:
-          #   { "status": "healthy", "version": "v2", "chaos_mode": false }
-          readinessProbe:
-            httpGet:
-              path: /health
-              port: 5000
-            initialDelaySeconds: 5    # Wait 5s after startup before first check
-            periodSeconds: 10         # Check every 10 seconds
-            failureThreshold: 3       # Mark unready after 3 consecutive failures
-
-          # ── Liveness Probe ────────────────────────────────────────────────
-          # If v2 becomes stuck (e.g., deadlock during chaos simulation),
-          # Kubernetes will automatically restart the container.
-          #
-          # This prevents zombie pods that appear "running" but are frozen.
-          # For a release candidate, auto-restart is a critical safety net.
-          livenessProbe:
-            httpGet:
-              path: /health
-              port: 5000
-            initialDelaySeconds: 15   # Give app 15s to fully initialize
-            periodSeconds: 20         # Check every 20 seconds
-            failureThreshold: 3       # Restart after 3 consecutive liveness failures
-
           # ── Resource Limits ───────────────────────────────────────────────
           # Same resource profile as Blue. This ensures a fair comparison —
           # both environments run with identical resource constraints.
