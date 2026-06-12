@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: streamshield-postgres-config
+  namespace: streamshield
+data:
+  POSTGRES_DB: streamshield_db

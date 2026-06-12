@@ -1,0 +1,30 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: streamshield-postgres-backup
+  namespace: streamshield
+spec:
+  schedule: "*/30 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: postgres-backup
+              image: postgres:16
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: streamshield-postgres-secret
+                      key: POSTGRES_PASSWORD
+              command:
+                - sh
+                - -c
+                - |
+                  echo "Starting StreamShield PostgreSQL backup..."
+                  pg_dump -h streamshield-postgres -U streamshield_admin streamshield_db > /tmp/streamshield-backup.sql
+                  echo "Backup completed successfully."
+                  ls -lh /tmp/streamshield-backup.sql
