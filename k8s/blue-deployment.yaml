@@ -1,127 +1,55 @@
-# =============================================================================
-# StreamShield Simulator — Blue Deployment (Stable v1)
-# =============================================================================
-#
-# BLUE ENVIRONMENT — PRODUCTION STABLE
-# ─────────────────────────────────────
-# The Blue environment runs streamshield-v1 and represents the CURRENT
-# stable production version. In a Blue-Green deployment strategy:
-#
-#   BLUE  = what users are currently using (safe, battle-tested)
-#   GREEN = the new release candidate being validated
-#
-# This Deployment ensures 2 replicas of v1 are always running, with
-# liveness and readiness probes to ensure only healthy pods receive traffic.
-#
-# Apply with:
-#   kubectl apply -f k8s/blue-deployment.yaml
-# =============================================================================
-
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: streamshield-blue
-  namespace: streamshield           # Must match namespace.yaml
+  namespace: streamshield
   labels:
     app: streamshield
     version: v1
     environment: blue
-    release-role: stable            # Blue = stable production environment
 
 spec:
-  # ── Replica Count ────────────────────────────────────────────────────────
-  # Run 2 pods for availability. If one pod crashes, the other continues
-  # serving traffic until the crashed pod is restarted automatically.
   replicas: 2
 
-  # ── Selector ─────────────────────────────────────────────────────────────
-  # Kubernetes uses this to find which pods belong to this Deployment.
-  # It must match the labels defined in template.metadata.labels below.
   selector:
     matchLabels:
       app: streamshield
       version: v1
       environment: blue
 
-  # ── Pod Template ─────────────────────────────────────────────────────────
-  # Defines the blueprint for every pod created by this Deployment.
   template:
     metadata:
       labels:
         app: streamshield
         version: v1
         environment: blue
-        release-role: stable        # Used for filtering/monitoring
 
     spec:
       containers:
         - name: streamshield-v1
-          image: streamshield-v1:latest
-
-          # ── imagePullPolicy: Never ────────────────────────────────────────
-          # IMPORTANT: When using Minikube, Docker images must be loaded
-          # into Minikube's internal registry using:
-          #   minikube image load streamshield-v1:latest
-          #
-          # Setting imagePullPolicy to "Never" tells Kubernetes:
-          #   "Do NOT try to pull this image from Docker Hub or any registry.
-          #    Use the image already available locally inside Minikube."
-          #
-          # Without this, Kubernetes would try to pull from the internet
-          # and fail with ErrImagePull or ImagePullBackOff.
+          image: zero-downtime-deployment-v1:latest
           imagePullPolicy: Never
 
-          # Port the Flask app listens on inside the container
           ports:
             - containerPort: 5000
               name: http
 
-          # ── Readiness Probe ───────────────────────────────────────────────
-          # The readiness probe tells Kubernetes: "Is this pod READY to
-          # receive traffic from a Service?"
-          #
-          # Kubernetes calls GET /health on port 5000 every 10 seconds.
-          # If it returns HTTP 200 → pod is "ready" and gets traffic.
-          # If it fails 3 times in a row → pod is marked "not ready"
-          # and removed from the Service load balancer until it recovers.
-          #
-          # This prevents sending user traffic to a pod that is still
-          # starting up or temporarily unhealthy.
           readinessProbe:
             httpGet:
               path: /health
               port: 5000
-            initialDelaySeconds: 5    # Wait 5s after container starts before first check
-            periodSeconds: 10         # Check every 10 seconds
-            failureThreshold: 3       # Allow 3 consecutive failures before marking not ready
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
 
-          # ── Liveness Probe ────────────────────────────────────────────────
-          # The liveness probe tells Kubernetes: "Is this container still
-          # ALIVE and running? Or is it stuck/deadlocked?"
-          #
-          # Kubernetes calls GET /health on port 5000 every 20 seconds.
-          # If it fails 3 times → Kubernetes RESTARTS the container.
-          #
-          # This handles cases where the app is running but frozen —
-          # a restart can automatically fix such issues.
           livenessProbe:
             httpGet:
               path: /health
               port: 5000
-            initialDelaySeconds: 15   # Wait 15s for app to fully start before first check
-            periodSeconds: 20         # Check every 20 seconds
-            failureThreshold: 3       # Restart container after 3 consecutive failures
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            failureThreshold: 3
 
-          # ── Resource Limits ───────────────────────────────────────────────
-          # Resources define how much CPU and Memory each pod is allocated.
-          #
-          # requests = minimum guaranteed resources (scheduler uses this to
-          #            find a node with enough capacity)
-          # limits   = maximum resources the pod is ALLOWED to use
-          #            (pod is killed/throttled if it exceeds limits)
-          #
-          # 100m CPU = 0.1 vCPU core  |  300m CPU = 0.3 vCPU core
-          # 128Mi = 128 megabytes RAM  |  256Mi = 256 megabytes RAM
           resources:
             requests:
               cpu: "100m"
