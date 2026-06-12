@@ -1,0 +1,33 @@
+name: StreamShield Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Create Source Artifact
+        run: |
+          zip -r streamshield-${{ github.ref_name }}.zip .
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: streamshield-${{ github.ref_name }}
+          path: streamshield-${{ github.ref_name }}.zip
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: streamshield-${{ github.ref_name }}.zip
+          generate_release_notes: true
