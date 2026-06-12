@@ -1,0 +1,51 @@
+# =============================================================================
+# StreamShield — Main Ingress (Smart Rollout Production Route)
+# =============================================================================
+#
+# PURPOSE: This is the PRIMARY ingress for the smart rollout strategy.
+# It routes 100% of normal user traffic to streamshield-blue-service (v1).
+# v1 stays stable while v2 is being validated separately.
+#
+# In Smart Rollout Mode:
+#   - This ingress handles the majority of traffic → Blue (v1)
+#   - ingress-canary-10.yaml handles 10% of traffic → Green (v2)
+#   - ingress-internal-team.yaml handles QA header traffic → Green (v2)
+#
+# NGINX Ingress must be enabled before applying:
+#   minikube addons enable ingress
+#
+# Apply with:
+#   kubectl apply -f k8s/ingress-main.yaml
+#
+# Verify:
+#   kubectl get ingress -n streamshield
+# =============================================================================
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: streamshield-main-ingress
+  namespace: streamshield
+  labels:
+    app: streamshield
+    phase: phase-3
+    role: primary-production   # This is the stable production ingress
+  annotations:
+    # Use the NGINX ingress controller (installed via minikube addons enable ingress)
+    kubernetes.io/ingress.class: "nginx"
+
+spec:
+  rules:
+    # All traffic to streamshield.local is handled by this ingress
+    # Add to Windows hosts file: <MINIKUBE_IP> streamshield.local
+    - host: streamshield.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                # Route to stable v1 Blue environment
+                name: streamshield-blue-service
+                port:
+                  number: 80

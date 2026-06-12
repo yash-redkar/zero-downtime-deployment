@@ -1,0 +1,71 @@
+# =============================================================================
+# StreamShield — Internal Team Ingress (QA Header-Based Routing to v2)
+# =============================================================================
+#
+# PURPOSE: This ingress routes requests to Green (v2) ONLY when the HTTP
+# request includes a specific header:  X-Internal-Team: true
+#
+# This simulates the Internal QA Stage of a smart rollout:
+#   Stage 1: Internal QA team tests v2 privately  ← THIS FILE
+#   Stage 2: 10% canary public traffic             ← ingress-canary-10.yaml
+#   Stage 3: Full production (Phase 4+)
+#
+# HOW HEADER-BASED ROUTING WORKS:
+# ────────────────────────────────
+# Normal users → http://streamshield.local          → v1 (Blue) [no header]
+# QA Engineers → http://streamshield.local          → v2 (Green) [with header]
+#                  with header: X-Internal-Team: true
+#
+# The QA team can test the exact same URL that real users hit,
+# but they are routed to the new v2 release because of the header.
+# Real users without the header always land on stable v1.
+#
+# Example QA test command:
+#   curl -H "X-Internal-Team: true" http://streamshield.local
+#   curl -H "X-Internal-Team: true" http://streamshield.local/watch
+#   curl -H "X-Internal-Team: true" http://streamshield.local/chaos/on
+#
+# Requires:
+#   kubectl apply -f k8s/ingress-main.yaml             (apply main FIRST)
+#   kubectl apply -f k8s/ingress-internal-team.yaml
+#
+# Verify:
+#   kubectl get ingress -n streamshield
+# =============================================================================
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: streamshield-internal-ingress
+  namespace: streamshield
+  labels:
+    app: streamshield
+    phase: phase-3
+    role: internal-qa-routing   # Exclusively for internal QA team access to v2
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+
+    # ── Header-Based Canary Annotations ─────────────────────────────────────
+    # Mark this as a canary ingress (companion to ingress-main.yaml)
+    nginx.ingress.kubernetes.io/canary: "true"
+
+    # Route based on a specific HTTP header name
+    nginx.ingress.kubernetes.io/canary-by-header: "X-Internal-Team"
+
+    # Only route to v2 when the header value is EXACTLY "true"
+    # Any other value (or missing header) → traffic stays on v1
+    nginx.ingress.kubernetes.io/canary-by-header-value: "true"
+
+spec:
+  rules:
+    - host: streamshield.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                # QA team traffic goes directly to v2 Green environment
+                name: streamshield-green-service
+                port:
+                  number: 80
