@@ -1,0 +1,126 @@
+name: StreamShield Deployment Workflow
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        default: "staging"
+        type: choice
+        options:
+          - staging
+          - production
+
+      version:
+        description: "Release version to deploy"
+        required: true
+        default: "v0.5.0"
+
+      strategy:
+        description: "Deployment strategy"
+        required: true
+        default: "blue-green"
+        type: choice
+        options:
+          - blue-green
+          - canary
+          - internal-preview
+
+permissions:
+  contents: read
+
+jobs:
+  deployment-plan:
+    name: Generate Deployment Plan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Generate Deployment Plan Artifact
+        run: |
+          mkdir -p deployment-artifact
+
+          echo "# StreamShield Deployment Plan" > deployment-artifact/DEPLOYMENT_PLAN.md
+          echo "" >> deployment-artifact/DEPLOYMENT_PLAN.md
+
+          echo "## Deployment Metadata" >> deployment-artifact/DEPLOYMENT_PLAN.md
+          echo "- Environment: ${{ github.event.inputs.environment }}" >> deployment-artifact/DEPLOYMENT_PLAN.md
+          echo "- Version: ${{ github.event.inputs.version }}" >> deployment-artifact/DEPLOYMENT_PLAN.md
+          echo "- Strategy: ${{ github.event.inputs.strategy }}" >> deployment-artifact/DEPLOYMENT_PLAN.md
+          echo "- Triggered By: ${{ github.actor }}" >> deployment-artifact/DEPLOYMENT_PLAN.md
+          echo "- Commit SHA: ${{ github.sha }}" >> deployment-artifact/DEPLOYMENT_PLAN.md
+          echo "- Workflow Run: ${{ github.run_number }}" >> deployment-artifact/DEPLOYMENT_PLAN.md
+          echo "" >> deployment-artifact/DEPLOYMENT_PLAN.md
+
+          echo "## Core Kubernetes Deployment Commands" >> deployment-artifact/DEPLOYMENT_PLAN.md
+          echo '```bash' >> deployment-artifact/DEPLOYMENT_PLAN.md
+          echo "kubectl apply -f k8s/namespace.yaml" >> deployment-artifact/DEPLOYMENT_PLAN.md
+          echo "kubectl apply -f k8s/blue-deployment.yaml" >> deployment-artifact/DEPLOYMENT_PLAN.md
+          echo "kubectl apply -f k8s/green-deployment.yaml" >> deployment-artifact/DEPLOYMENT_PLAN.md
+          echo "kubectl apply -f k8s/blue-service.yaml" >> deployment-artifact/DEPLOYMENT_PLAN.md
+          echo "kubectl apply -f k8s/green-service.yaml" >> deployment-artifact/DEPLOYMENT_PLAN.md
+          echo '```' >> deployment-artifact/DEPLOYMENT_PLAN.md
+          echo "" >> deployment-artifact/DEPLOYMENT_PLAN.md
+
+          echo "## Database Deployment Commands" >> deployment-artifact/DEPLOYMENT_PLAN.md
+          echo '```bash' >> deployment-artifact/DEPLOYMENT_PLAN.md
+          echo "kubectl apply -f k8s/postgres-secret.yaml" >> deployment-artifact/DEPLOYMENT_PLAN.md
+          echo "kubectl apply -f k8s/postgres-configmap.yaml" >> deployment-artifact/DEPLOYMENT_PLAN.md
+          echo "kubectl apply -f k8s/postgres-service.yaml" >> deployment-artifact/DEPLOYMENT_PLAN.md
+          echo "kubectl apply -f k8s/postgres-statefulset.yaml" >> deployment-artifact/DEPLOYMENT_PLAN.md
+          echo "kubectl apply -f k8s/postgres-init-job.yaml" >> deployment-artifact/DEPLOYMENT_PLAN.md
+          echo "kubectl apply -f k8s/postgres-backup-cronjob.yaml" >> deployment-artifact/DEPLOYMENT_PLAN.md
+          echo '```' >> deployment-artifact/DEPLOYMENT_PLAN.md
+          echo "" >> deployment-artifact/DEPLOYMENT_PLAN.md
+
+          echo "## Routing Strategy Commands" >> deployment-artifact/DEPLOYMENT_PLAN.md
+
+          if [ "${{ github.event.inputs.strategy }}" = "blue-green" ]; then
+            echo '```bash' >> deployment-artifact/DEPLOYMENT_PLAN.md
+            echo "kubectl apply -f k8s/ingress-main.yaml" >> deployment-artifact/DEPLOYMENT_PLAN.md
+            echo '```' >> deployment-artifact/DEPLOYMENT_PLAN.md
+          fi
+
+          if [ "${{ github.event.inputs.strategy }}" = "canary" ]; then
+            echo '```bash' >> deployment-artifact/DEPLOYMENT_PLAN.md
+            echo "kubectl apply -f k8s/ingress-main.yaml" >> deployment-artifact/DEPLOYMENT_PLAN.md
+            echo "kubectl apply -f k8s/ingress-canary-10.yaml" >> deployment-artifact/DEPLOYMENT_PLAN.md
+            echo '```' >> deployment-artifact/DEPLOYMENT_PLAN.md
+          fi
+
+          if [ "${{ github.event.inputs.strategy }}" = "internal-preview" ]; then
+            echo '```bash' >> deployment-artifact/DEPLOYMENT_PLAN.md
+            echo "kubectl apply -f k8s/ingress-main.yaml" >> deployment-artifact/DEPLOYMENT_PLAN.md
+            echo "kubectl apply -f k8s/ingress-internal-team.yaml" >> deployment-artifact/DEPLOYMENT_PLAN.md
+            echo '```' >> deployment-artifact/DEPLOYMENT_PLAN.md
+          fi
+
+          echo "" >> deployment-artifact/DEPLOYMENT_PLAN.md
+          echo "## Verification Commands" >> deployment-artifact/DEPLOYMENT_PLAN.md
+          echo '```bash' >> deployment-artifact/DEPLOYMENT_PLAN.md
+          echo "kubectl get pods -n streamshield" >> deployment-artifact/DEPLOYMENT_PLAN.md
+          echo "kubectl get svc -n streamshield" >> deployment-artifact/DEPLOYMENT_PLAN.md
+          echo "kubectl get ingress -n streamshield" >> deployment-artifact/DEPLOYMENT_PLAN.md
+          echo "kubectl get statefulset -n streamshield" >> deployment-artifact/DEPLOYMENT_PLAN.md
+          echo "kubectl get pvc -n streamshield" >> deployment-artifact/DEPLOYMENT_PLAN.md
+          echo "kubectl get cronjob -n streamshield" >> deployment-artifact/DEPLOYMENT_PLAN.md
+          echo '```' >> deployment-artifact/DEPLOYMENT_PLAN.md
+
+      - name: Upload Deployment Plan Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: streamshield-deployment-plan-${{ github.run_number }}
+          path: deployment-artifact/
+
+      - name: Deployment Summary
+        run: |
+          echo "## StreamShield Deployment Plan Generated" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ github.event.inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ github.event.inputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Strategy:** ${{ github.event.inputs.strategy }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Deployment plan artifact generated successfully." >> $GITHUB_STEP_SUMMARY
