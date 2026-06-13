@@ -1,75 +1,43 @@
 apiVersion: apps/v1
 kind: Deployment
-
 metadata:
   name: streamshield-green
   namespace: streamshield
   labels:
     app: streamshield
-    version: v2
-    environment: green
-
+    version: green
 spec:
   replicas: 2
-
   selector:
     matchLabels:
       app: streamshield
-      version: v2
-      environment: green
-
+      version: green
   template:
     metadata:
       labels:
         app: streamshield
-        version: v2
-        environment: green
-
+        version: green
     spec:
       containers:
-        - name: streamshield-v2
-<<<<<<< HEAD
+        - name: streamshield-green
           image: streamshield-v2:latest
-
-          # ── imagePullPolicy: Never ────────────────────────────────────────
-          # IMPORTANT: This tells Kubernetes NOT to pull from Docker Hub.
-          # Instead, use the image already loaded into Minikube's registry.
-          #
-          # Before applying this file, you MUST run:
-          #   minikube image load streamshield-v2:latest
-          #
-          # Without this step, the pod will fail with ImagePullBackOff error
-          # because Kubernetes cannot find the image in any remote registry.
-          imagePullPolicy: IfNotPresent
-=======
-          image: zero-downtime-deployment-v2:latest
           imagePullPolicy: Never
->>>>>>> abd53adcb0b257690d81b1dce83239b9bfecaa48
-
           ports:
             - containerPort: 5000
-              name: http
-
+          env:
+            - name: APP_VERSION
+              value: "v2-green"
+            - name: RELEASE_STAGE
+              value: "green"
           readinessProbe:
             httpGet:
               path: /health
               port: 5000
             initialDelaySeconds: 5
             periodSeconds: 10
-            failureThreshold: 3
-
           livenessProbe:
             httpGet:
               path: /health
               port: 5000
-            initialDelaySeconds: 15
-            periodSeconds: 20
-            failureThreshold: 3
-
-          resources:
-            requests:
-              cpu: "100m"
-              memory: "128Mi"
-            limits:
-              cpu: "300m"
-              memory: "256Mi"
+            initialDelaySeconds: 10
+            periodSeconds: 15
