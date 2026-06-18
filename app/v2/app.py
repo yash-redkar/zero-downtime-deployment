@@ -1213,10 +1213,7 @@ def release_mode_unsafe():
         "impact": "All users experience outage if v2 has bugs"
     })
 
-
-# =============================================================================
 # ROUTE: /release-mode/smart — Smart Rollout Info (JSON)
-# =============================================================================
 @app.route("/release-mode/smart")
 def release_mode_smart():
     """Returns JSON describing the smart rollout scenario."""
@@ -1233,10 +1230,8 @@ def release_mode_smart():
         "impact": "90% of users stay safely on v1 while v2 is validated"
     })
 
-
-# =============================================================================
 # ROUTE: /metrics — Prometheus Metrics
-# =============================================================================
+
 @app.route("/metrics")
 def metrics():
     """

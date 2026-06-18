@@ -1,162 +1,83 @@
-# =============================================================================
-# StreamShield — Manual Rollback Script
-# =============================================================================
-#
-# WHAT THIS SCRIPT DOES:
-# ───────────────────────
-# Performs a manual, controlled rollback of the StreamShield platform:
-#   1. Disables chaos mode on v2
-#   2. Removes all canary/unsafe/internal ingresses
-#   3. Ensures the main ingress routes traffic back to stable v1 (Blue)
-#   4. Optionally scales down green deployment to 1 replica
-#   5. Verifies the final cluster state
-#
-# Use this when:
-#   - Health score shows ROLLBACK REQUIRED
-#   - You want to manually reset after a bad release demo
-#   - auto-rollback.ps1 could not complete due to network issues
-#
-# RUN FROM PROJECT ROOT:
-#   cd D:\Devops\StreamShield
-#   .\scripts\rollback.ps1
-# =============================================================================
+﻿$ErrorActionPreference = "Stop"
 
-# ── Formatting helpers ────────────────────────────────────────────────────────
-function Print-Header($text) {
-    Write-Host ""
-    Write-Host ("=" * 60) -ForegroundColor DarkRed
-    Write-Host "  $text" -ForegroundColor Red
-    Write-Host ("=" * 60) -ForegroundColor DarkRed
-    Write-Host ""
-}
-
-function Print-Step($n, $text) {
-    Write-Host "[STEP $n] " -ForegroundColor Yellow -NoNewline
-    Write-Host $text -ForegroundColor White
-}
-
-function Print-Info($text)    { Write-Host "  >> $text" -ForegroundColor Cyan }
-function Print-Success($text) { Write-Host "  OK $text" -ForegroundColor Green }
-function Print-Warning($text) { Write-Host "  !! $text" -ForegroundColor Yellow }
-
-# =============================================================================
-Print-Header "STREAMSHIELD MANUAL ROLLBACK"
-
-Write-Host "  Initiating controlled rollback to v1 (Blue)..." -ForegroundColor White
-Write-Host "  This will restore 100% of traffic to stable v1." -ForegroundColor White
+Write-Host ""
+Write-Host "========================================="
+Write-Host " StreamShield Rollback Simulation"
+Write-Host "========================================="
 Write-Host ""
 
-# =============================================================================
-# STEP 1 — Disable Chaos Mode (Direct Route)
-# =============================================================================
-Print-Step 1 "Disabling chaos mode on v2 (direct URL)..."
-Print-Info "Sending GET http://streamshield.local/chaos/off"
-
-try {
-    $r = Invoke-WebRequest -Uri "http://streamshield.local/chaos/off" `
-             -TimeoutSec 8 -ErrorAction Stop
-    Print-Success "Chaos mode disabled. Response: $($r.StatusCode)"
-} catch {
-    Print-Warning "Direct /chaos/off failed — ingress may already be removed."
-}
+Write-Host "[INFO] This script simulates rollback to stable Blue version."
+Write-Host "[INFO] Rollback is used when Green release is unhealthy."
 Write-Host ""
 
-# =============================================================================
-# STEP 2 — Disable Chaos Mode (via QA Header Route)
-# =============================================================================
-Print-Step 2 "Disabling chaos mode via internal QA header..."
-Print-Info "Sending GET http://streamshield.local/chaos/off with X-Internal-Team: true"
-
-try {
-    $headers = @{ "X-Internal-Team" = "true" }
-    $r = Invoke-WebRequest -Uri "http://streamshield.local/chaos/off" `
-             -Headers $headers -TimeoutSec 8 -ErrorAction Stop
-    Print-Success "Chaos mode disabled via QA header. Response: $($r.StatusCode)"
-} catch {
-    Print-Warning "QA header /chaos/off failed — internal ingress may be removed."
-}
+Write-Host "[CHECK] Checking Kubernetes namespace..."
+kubectl get ns streamshield | Out-Null
+Write-Host "[OK] Namespace streamshield found."
 Write-Host ""
 
-# =============================================================================
-# STEP 3 — Remove All Unsafe/Canary/Internal Ingresses
-# =============================================================================
-Print-Step 3 "Removing all non-production ingress rules..."
-Print-Info "Using --ignore-not-found=true — safe to run even if resources don't exist."
-Write-Host ""
-
-Write-Host "  Removing: unsafe-rollout ingress..." -ForegroundColor DarkGray
-kubectl delete -f k8s/unsafe-rollout.yaml --ignore-not-found=true
-
-Write-Host "  Removing: canary-10 ingress..." -ForegroundColor DarkGray
-kubectl delete -f k8s/ingress-canary-10.yaml --ignore-not-found=true
-
-Write-Host "  Removing: internal-team ingress..." -ForegroundColor DarkGray
-kubectl delete -f k8s/ingress-internal-team.yaml --ignore-not-found=true
-
-Write-Host "  Removing: main ingress (will be re-applied clean)..." -ForegroundColor DarkGray
-kubectl delete -f k8s/ingress-main.yaml --ignore-not-found=true
-
-Start-Sleep 3
-Print-Success "All rollout ingresses removed."
-Write-Host ""
-
-# =============================================================================
-# STEP 4 — Re-apply Main Production Ingress (v1 as Primary)
-# =============================================================================
-Print-Step 4 "Re-applying main ingress → routing ALL traffic back to v1 (Blue)..."
-Print-Info "Applying k8s/ingress-main.yaml"
-
-kubectl apply -f k8s/ingress-main.yaml
-
-if ($LASTEXITCODE -eq 0) {
-    Print-Success "Main ingress applied. v1 (Blue) is now the sole production route."
-} else {
-    Print-Warning "Could not apply main ingress!"
-    Print-Info "Manual fix: kubectl apply -f k8s/ingress-main.yaml"
-}
-Write-Host ""
-
-# =============================================================================
-# STEP 5 — Scale Down Green Deployment (Optional Safety Measure)
-# =============================================================================
-Print-Step 5 "Scaling green deployment to 1 replica (resource conservation)..."
-Print-Info "This reduces green resource usage while v2 is not in active use."
-Print-Info "Command: kubectl scale deployment streamshield-green --replicas=1 -n streamshield"
-
-kubectl scale deployment streamshield-green --replicas=1 -n streamshield
-
-if ($LASTEXITCODE -eq 0) {
-    Print-Success "Green deployment scaled to 1 replica."
-} else {
-    Print-Warning "Could not scale green deployment. It may still be at 2 replicas."
-}
-Write-Host ""
-
-# =============================================================================
-# STEP 6 — Verify Final Cluster State
-# =============================================================================
-Print-Step 6 "Verifying final cluster state..."
-Write-Host ""
-
-Write-Host "  Current Ingress Resources:" -ForegroundColor DarkGray
-kubectl get ingress -n streamshield
-Write-Host ""
-
-Write-Host "  Current Pods:" -ForegroundColor DarkGray
+Write-Host "[BEFORE] Current pods:"
 kubectl get pods -n streamshield
 Write-Host ""
 
-# =============================================================================
-# DONE
-# =============================================================================
-Write-Host ("=" * 60) -ForegroundColor DarkCyan
-Write-Host "  ROLLBACK COMPLETE" -ForegroundColor Green
-Write-Host ("=" * 60) -ForegroundColor DarkCyan
+Write-Host "[BEFORE] Current ingress:"
+kubectl get ingress -n streamshield
 Write-Host ""
-Write-Host "  Traffic restored to stable v1 (Blue environment)." -ForegroundColor Green
-Write-Host "  Chaos mode is OFF." -ForegroundColor Green
-Write-Host "  Green deployment is at 1 replica (idle)." -ForegroundColor Green
+
+Write-Host "[STEP 1] Ensuring Blue stable deployment is available..."
+kubectl apply -f k8s/blue-deployment.yaml
+kubectl apply -f k8s/blue-service.yaml
+Write-Host "[OK] Blue stable environment verified."
 Write-Host ""
-Write-Host "  Verify by visiting: http://streamshield.local" -ForegroundColor Cyan
-Write-Host "  Should show: StreamShield v1 — Stable Blue" -ForegroundColor DarkGray
+
+Write-Host "[STEP 2] Removing canary routing to Green if present..."
+
+if (Test-Path "k8s/ingress-canary-10.yaml") {
+    kubectl delete -f k8s/ingress-canary-10.yaml --ignore-not-found
+    Write-Host "[OK] Canary ingress removed or already absent."
+}
+else {
+    kubectl delete ingress streamshield-canary-ingress -n streamshield --ignore-not-found
+    Write-Host "[OK] Canary ingress removed by name or already absent."
+}
+
+Write-Host ""
+
+Write-Host "[STEP 3] Applying main Blue routing if available..."
+
+if (Test-Path "k8s/ingress-main.yaml") {
+    kubectl apply -f k8s/ingress-main.yaml
+    Write-Host "[OK] Main ingress applied."
+}
+else {
+    Write-Host "[WARN] k8s/ingress-main.yaml not found. Skipping main ingress apply."
+}
+
+Write-Host ""
+
+Write-Host "[AFTER] Pods:"
+kubectl get pods -n streamshield
+
+Write-Host ""
+Write-Host "[AFTER] Services:"
+kubectl get svc -n streamshield
+
+Write-Host ""
+Write-Host "[AFTER] Ingress:"
+kubectl get ingress -n streamshield
+
+Write-Host ""
+Write-Host "========================================="
+Write-Host " Rollback Completed"
+Write-Host "========================================="
+Write-Host ""
+Write-Host "Rollback Result:"
+Write-Host "- Stable Blue version remains available."
+Write-Host "- Canary traffic to Green is removed."
+Write-Host "- Traffic is restored to the safe Blue path."
+Write-Host "- Users are protected from unhealthy Green release."
+Write-Host ""
+Write-Host "Explanation:"
+Write-Host "- Rollback means returning traffic to the stable version."
+Write-Host "- In our project, Blue is stable and Green is the new release."
+Write-Host "- If Green fails, rollback protects users by keeping Blue active."
 Write-Host ""

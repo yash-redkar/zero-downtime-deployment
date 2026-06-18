@@ -1,7 +1,5 @@
-# =============================================================================
 # StreamShield Simulator — Blue Service (Stable v1)
-# =============================================================================
-#
+
 # A Kubernetes Service exposes a group of pods as a stable network endpoint.
 # Pods are ephemeral — they can be created, destroyed, and rescheduled at any
 # time. Without a Service, clients would have to track individual pod IPs.
@@ -20,7 +18,6 @@
 #
 # Apply with:
 #   kubectl apply -f k8s/blue-service.yaml
-# =============================================================================
 
 apiVersion: v1
 kind: Service

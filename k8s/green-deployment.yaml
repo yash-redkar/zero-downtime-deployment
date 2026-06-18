@@ -5,39 +5,59 @@ metadata:
   namespace: streamshield
   labels:
     app: streamshield
-    version: green
+    version: v2
+    environment: green
+
 spec:
   replicas: 2
+
   selector:
     matchLabels:
       app: streamshield
-      version: green
+      version: v2
+      environment: green
+
   template:
     metadata:
       labels:
         app: streamshield
-        version: green
+        version: v2
+        environment: green
+
     spec:
       containers:
-        - name: streamshield-green
+        - name: streamshield-v2
           image: streamshield-v2:latest
           imagePullPolicy: Never
+
           ports:
             - containerPort: 5000
+              name: http
+
           env:
             - name: APP_VERSION
               value: "v2-green"
             - name: RELEASE_STAGE
               value: "green"
+
           readinessProbe:
             httpGet:
               path: /health
               port: 5000
             initialDelaySeconds: 5
             periodSeconds: 10
+
           livenessProbe:
             httpGet:
               path: /health
               port: 5000
             initialDelaySeconds: 10
             periodSeconds: 15
+
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "300m"
+              memory: "256Mi"

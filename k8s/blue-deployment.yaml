@@ -27,24 +27,8 @@ spec:
     spec:
       containers:
         - name: streamshield-v1
-<<<<<<< HEAD
           image: streamshield-v1:latest
-          # ── imagePullPolicy: Never ────────────────────────────────────────
-          # IMPORTANT: When using Minikube, Docker images must be loaded
-          # into Minikube's internal registry using:
-          #   minikube image load streamshield-v1:latest
-          #
-          # Setting imagePullPolicy to "Never" tells Kubernetes:
-          #   "Do NOT try to pull this image from Docker Hub or any registry.
-          #    Use the image already available locally inside Minikube."
-          #
-          # Without this, Kubernetes would try to pull from the internet
-          # and fail with ErrImagePull or ImagePullBackOff.
-          imagePullPolicy: IfNotPresent
-=======
-          image: zero-downtime-deployment-v1:latest
           imagePullPolicy: Never
->>>>>>> abd53adcb0b257690d81b1dce83239b9bfecaa48
 
           ports:
             - containerPort: 5000

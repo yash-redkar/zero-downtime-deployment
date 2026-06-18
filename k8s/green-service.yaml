@@ -1,7 +1,5 @@
-# =============================================================================
+
 # StreamShield Simulator — Green Service (Release Candidate v2)
-# =============================================================================
-#
 # This Service exposes the Green (v2) environment via NodePort 30082.
 # It allows the team to access and validate the new release candidate
 # directly, without affecting users who are still on the Blue (v1) Service.
@@ -21,7 +19,6 @@
 #
 # Apply with:
 #   kubectl apply -f k8s/green-service.yaml
-# =============================================================================
 
 apiVersion: v1
 kind: Service
